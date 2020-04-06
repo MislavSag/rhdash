@@ -1,2 +1,2 @@
 # rhdash
-Dashboard for Crotia daily data
+Dashboard for Croati daily data.
