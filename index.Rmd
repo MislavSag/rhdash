@@ -1,0 +1,187 @@
+---
+title: "COVID-19-RH"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(httr)
+library(rvest)
+library(jsonlite)
+library(readxl)
+library(stringr)
+library(zoo)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(bizdays)
+
+
+# global
+PATH_DATA_FOLDER = 'D:/data/sreg_daily'
+
+# generate data folder
+generate_data_daily_folder <- function(path) {
+  if (!dir.exists(PATH_DATA_FOLDER)) {
+    dir.create(PATH_DATA_FOLDER)
+  }
+}
+
+# sreg data API
+get_sreg_data <- function(tag = 'subjekt', date_cols = c('datum_osnivanja', 'datum_brisanja')) {
+  domain <- "https://sudreg-api.pravosudje.hr/javni/"
+  if (tag == 'subjekt') {
+    url <- paste0(domain, tag, "?offset=0&limit=800000&expand_relations=true&only_active=false")
+  } else if (tag == 'postupak') {
+    url <- paste0(domain, tag, "?offset=0&limit=800000")
+  }
+  req <- httr::RETRY("GET", url, add_headers('Ocp-Apim-Subscription-Key' = "0c7a9bbd34674a428e4218340fba732b"),
+                     pause_cap = 60)
+  json <- httr::content(req, as = "text", encoding = "UTF-8")
+  output <- jsonlite::fromJSON(json, simplifyDataFrame = TRUE)
+  data.table::setDT(output)
+  output[, (date_cols) := lapply(.SD, as.POSIXct), .SDcols = (date_cols)]  # parse dates as POSIXCT
+  return(output)
+}
+daily_files <- list.files(PATH_DATA_FOLDER, pattern = as.character(Sys.Date()))
+if (length(daily_files) == 0) {
+  subjekti <- get_sreg_data()
+  subjekti$oib <- str_pad(subjekti$oib, 11L, 'left', "0")
+  fwrite(subjekti, paste0(PATH_DATA_FOLDER, "/subjekti-", Sys.Date(), '.csv'), sep=';')
+} else {
+  subjekti <- fread(paste0(PATH_DATA_FOLDER, "/subjekti-", Sys.Date(), '.csv'), sep=';')
+  subjekti$datum_osnivanja <- lubridate::ymd_hms(subjekti$datum_osnivanja)
+  subjekti$datum_brisanja <- lubridate::ymd_hms(subjekti$datum_brisanja)
+}
+if (!any(grepl('postup', daily_files))) {
+  postupci <- get_sreg_data('postupak', 'datum_stecaja')
+  fwrite(postupci, paste0(PATH_DATA_FOLDER, "/postupci-", Sys.Date(), '.csv'), sep=';')
+} else {
+  postupci <- fread(paste0(PATH_DATA_FOLDER, "/postupci-", Sys.Date(), '.csv'), sep=';')
+  postupci$datum_stecaja <- lubridate::ymd_hms(postupci$datum_stecaja)
+}
+
+# define bizz days
+praznici <- as.Date(c("2019-01-01", "2019-06-01", "2019-04-22", "2019-05-01",
+                      "2019-06-20", "2019-06-22", "2019-06-25", "2019-08-05",
+                      "2019-08-15", "2019-10-08", "2019-11-01", "2019-12-25",
+                      "2019-12-26", "2020-01-01", "2020-01-06", "2020-04-12",
+                      "2020-04-13", "2020-05-01", "2020-05-30", "2020-06-11",
+                      "2020-06-22", "2020-08-05", "2020-08-15", "2020-11-01",
+                      "2020-11-18", "2020-12-25", "2020-12-26"))
+bizdays::create.calendar("croatia_calendar", holidays = praznici, weekdays = c("saturday", "sunday"),
+                         start.date = "2019-01-01", end.date = "2025-12-31")
+last_biz_day <- bizdays::offset(Sys.Date(), -1, 'croatia_calendar')
+sreg_max_date <- max(max(subjekti$datum_brisanja, na.rm = TRUE),
+                     max(subjekti$datum_osnivanja, na.rm = TRUE),
+                     max(postupci$datum_stecaja, na.rm = TRUE))
+if (last_biz_day > sreg_max_date) {
+  last_biz_day <- sreg_max_date
+}
+
+# unemployment
+unemployment <- c(136071, 136855, 137722, 138673, 140907, 141289, 142442, 143461, 144819, 146477, 147575)
+date <- c('2020-03-23', '2020-03-24', '2020-03-25', '2020-03-26', '2020-03-27', '2020-03-30',
+          '2020-03-31', '2020-04-01', '2020-04-02', '2020-04-03', '2020-04-04')
+unemp <- data.frame(unemployment = unemployment, date = as.Date(date), stringsAsFactors = FALSE)
+actual_free_jobs <- c(9174)
+date <- c('2020-04-03')
+open_jobs <- data.frame(actual_free_jobs = actual_free_jobs, date = as.Date(date), stringsAsFactors = FALSE)
+```
+
+Dash {data-icon="fa-globe"}
+================================
+Row {data-width=650}
+-----------------------------------------------------------------------
+
+### Broj novoosnovanih firmi
+
+```{r}
+new_firms_today <- nrow(subjekti[datum_osnivanja == last_biz_day])
+valueBox(value = new_firms_today, icon = "fa-user-plus", caption = 'Broj novoosnovanih firmi', color = "green")
+```
+
+### Broj ugašenih tvrtki
+
+```{r}
+closed_firms_today <- nrow(subjekti[datum_brisanja == last_biz_day])
+valueBox(value = closed_firms_today,icon = "fa-user-times", caption = "Broj ugašenih tvrtki", color = "red")
+```
+
+### Broj stečajeva
+
+```{r}
+stecajevi_today <- nrow(postupci[datum_stecaja == last_biz_day])
+valueBox(value = stecajevi_today, icon = "fa-user-times", caption = "Broj pokrenutih stečajeva", color = "black")
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+### Dinamika novoosnovanih poduzeća
+
+```{r}
+new_firms <- subjekti[, .N, by = datum_osnivanja]
+new_firms <- new_firms[datum_osnivanja > as.POSIXct('2019-01-01 00:00:00')]
+new_firms_plot <- plot_ly(data = new_firms, x = ~datum_osnivanja, y = ~N) %>% 
+  add_lines(., hoverinfo="text", text=paste(new_firms$datum_osnivanja, ': ', new_firms$N)) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Broj novoosnovanih poduzeća'))
+
+new_firms_plot
+```
+
+### Dinamika ugašenih poduzeća
+
+```{r}
+closed_firms <- subjekti[, .N, by = datum_brisanja]
+closed_firms <- closed_firms[datum_brisanja > as.POSIXct('2019-01-01 00:00:00')]
+closed_firms_plot <- plot_ly(data = closed_firms, x = ~datum_brisanja, y = ~N) %>% 
+  add_lines(., hoverinfo="text", text=paste(closed_firms$datum_brisanja, ': ', closed_firms$N)) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Broj novoosnovanih poduzeća'))
+
+closed_firms_plot
+```
+
+### Dinamika stečajeva i likvidacija
+
+```{r}
+stecajevi <- postupci[, .N, by = datum_stecaja]
+stecajevi <- stecajevi[datum_stecaja > as.POSIXct('2019-01-01 00:00:00')]
+stecajevi_plot <- plot_ly(data = stecajevi, x = ~datum_stecaja, y = ~N) %>% 
+  add_lines(., hoverinfo="text", text=paste(stecajevi$datum_stecaja, ': ', stecajevi$N)) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Broj novoosnovanih poduzeća'))
+stecajevi_plot
+```
+
+
+
+Tržište rada {data-icon="fa-globe"}
+===
+Row {data-width=350}
+-----------------------------------------------------------------------
+
+
+### Chart B
+
+```{r}
+unemp$unemp_change <- c(NA, diff(unemp$unemployment))
+plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>% 
+  add_bars
+```
+
+### Chart C
+
+```{r}
+
+```
+
+Page 3
+===
