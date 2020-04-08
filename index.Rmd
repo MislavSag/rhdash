@@ -88,25 +88,16 @@ API_zahtjev <- httr::GET(url)
 jS_tekst <- httr::content(API_zahtjev, as = "text", type = "aplication/json", encoding = "UTF-8")
 fx  <- jsonlite::fromJSON(jS_tekst, flatten = TRUE)
 
-str(DF_za_analizu)
-
-
 CROfx <- fx %>%
-  select(Datum = 'Datum primjene', 'Valuta', Tecaj ='Srednji za devize') %>% 
-  mutate(Tecaj = as.numeric(gsub(",",".", Tecaj))) %>% 
-  mutate(Datum = as.Date(Datum, "%d.%m.%Y")) %>% 
-  filter(Valuta %in% c('EUR','USD')) %>%
-  spread(Valuta,Tecaj)
+  dplyr::select(Datum = 'Datum primjene', 'Valuta', Tecaj = 'Srednji za devize') %>% 
+  dplyr::mutate(Tecaj = as.numeric(gsub(",",".", Tecaj))) %>% 
+  dplyr::mutate(Datum = as.Date(Datum, "%d.%m.%Y")) %>% 
+  dplyr::filter(Valuta %in% c('EUR','USD')) %>%
+  tidyr::spread(Valuta,Tecaj)
 
 fwrite(CROfx, paste0(PATH_DATA_FOLDER_fx, "/tecaj-", Sys.Date(), '.csv'), sep=';')
 
-
-
-
 dnevni_tecaj <- fread(paste0(PATH_DATA_FOLDER_fx, "/tecaj-", Sys.Date(), '.csv'), sep=';') # %>% str()
-
-
-
 
 
 
@@ -241,6 +232,15 @@ plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>%
 ### Chart C
 
 ```{r}
+dfx <- dnevni_tecaj %>% dplyr::mutate(Datum = as.Date(Datum, "%Y-%m-%d")) # %>% str()
+fx_plot <- plot_ly(data = dfx, x = ~ Datum, y = ~ EUR, name = 'EUR', mode = 'lines') %>% 
+  add_lines(., hoverinfo="text", text=paste(dfx$Datum, ': ', dfx$EUR)) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Tečaj'))
+
+fx_plot <- fx_plot %>% add_trace(y = ~ USD, name = ' USD', mode = 'lines')
+
+fx_plot
 
 ```
 
