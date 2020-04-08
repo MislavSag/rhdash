@@ -22,7 +22,7 @@ library(bizdays)
 
 
 # global
-PATH_DATA_FOLDER = 'D:/data/sreg_daily'
+PATH_DATA_FOLDER = 'E:/Luka/R/FlexD/data/sreg_daily'
 
 # generate data folder
 generate_data_daily_folder <- function(path) {
@@ -91,6 +91,43 @@ unemp <- data.frame(unemployment = unemployment, date = as.Date(date), stringsAs
 actual_free_jobs <- c(9174)
 date <- c('2020-04-03')
 open_jobs <- data.frame(actual_free_jobs = actual_free_jobs, date = as.Date(date), stringsAsFactors = FALSE)
+
+
+
+
+# HNB api
+
+url <- "http://api.hnb.hr/tecajn/v1?datum-od=2019-12-01&datum-do=2020-04-08"
+
+# POVUCI 
+#options(timeout = 4000000) 
+
+API_zahtjev <- httr::GET(url)
+jS_tekst <- httr::content(API_zahtjev, as = "text", type = "aplication/json", encoding = "UTF-8")
+fx  <- jsonlite::fromJSON(jS_tekst, flatten = TRUE)
+
+str(DF_za_analizu)
+
+
+CROfx <- fx %>%
+  select(Datum = 'Datum primjene', 'Valuta', Tecaj ='Srednji za devize') %>% 
+  mutate(Tecaj = as.numeric(gsub(",",".", Tecaj))) %>% 
+  mutate(Datum = as.Date(Datum, "%d.%m.%Y")) %>% 
+  filter(Valuta %in% c('EUR','USD')) %>%
+  spread(Valuta,Tecaj)
+
+
+
+
+
+
+
+
+
+
+
+
+
 ```
 
 Dash {data-icon="fa-globe"}
