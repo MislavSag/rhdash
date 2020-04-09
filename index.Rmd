@@ -16,6 +16,7 @@ library(stringr)
 library(zoo)
 library(data.table)
 library(dplyr)
+library(janitor)
 library(ggplot2)
 library(plotly)
 library(bizdays)
@@ -84,9 +85,10 @@ if (last_biz_day > sreg_max_date) {
 }
 
 # unemployment
-unemployment <- c(136071, 136855, 137722, 138673, 140907, 141289, 142442, 143461, 144819, 146477, 147575)
+unemployment <- c(136071, 136855, 137722, 138673, 140907, 141289, 142442, 143461, 144819, 146477, 147575,
+                  14927)
 date <- c('2020-03-23', '2020-03-24', '2020-03-25', '2020-03-26', '2020-03-27', '2020-03-30',
-          '2020-03-31', '2020-04-01', '2020-04-02', '2020-04-03', '2020-04-04')
+          '2020-03-31', '2020-04-01', '2020-04-02', '2020-04-03', '2020-04-04', '2020-04-06')
 unemp <- data.frame(unemployment = unemployment, date = as.Date(date), stringsAsFactors = FALSE)
 actual_free_jobs <- c(9174)
 date <- c('2020-04-03')
@@ -183,5 +185,36 @@ plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>%
 
 ```
 
-Page 3
+Burza
 ===
+
+```{r}
+url <- 'https://zse.hr/default.aspx?id=44101&index=CROBEX'
+form_data <- list(
+  "reporttype" = "security",
+  "DateFrom" = "01.01.2019",
+  "DateTo" = "09.04.2020",
+  "IsItIndexHistory" = "yes"
+)
+req <- httr::POST(
+  url,
+  body = form_data
+  )
+crobex <- content(req) %>% 
+  html_nodes('table#dnevna_trgovanja') %>% 
+  .[[2]] %>% 
+  html_table(., fill=TRUE, header=TRUE) %>% 
+  janitor::clean_names(.) %>% 
+  dplyr::filter(!is.na(datum)) %>% 
+  dplyr::mutate(datum=as.Date(datum, "%d.%m.%Y")) %>% 
+  dplyr::mutate_at(vars(prva:promet_dionica_u_sastavu_indeksa), ~ gsub("\\.|%| ", "", .x)) %>% 
+  dplyr::mutate_at(vars(prva:promet_dionica_u_sastavu_indeksa), ~ as.numeric(gsub(",", "\\.", .x)))
+crobex_plot <- crobex %>% plot_ly(x = ~datum, type="candlestick",
+          open = ~prva, close = ~zadnja,
+          high = ~najvisa, low = ~najniza) 
+crobex_plot <- crobex_plot %>% layout(title = "Basic Candlestick Chart",
+                                      xaxis = list(rangeslider = list(visible = F)))
+crobex_plot
+
+```
+
