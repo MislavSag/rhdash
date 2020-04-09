@@ -23,14 +23,25 @@ library(bizdays)
 
 
 # global
-PATH_DATA_FOLDER = 'D:/data/sreg_daily'
+PATH_DATA_FOLDER = 'E:/Luka/R/FlexD/data/sreg_daily'
+PATH_DATA_FOLDER_fx = 'E:/Luka/R/FlexD/data/hnb_daily'
 
-# generate data folder
+
+
+# generate data folders
 generate_data_daily_folder <- function(path) {
   if (!dir.exists(PATH_DATA_FOLDER)) {
     dir.create(PATH_DATA_FOLDER)
   }
 }
+
+generate_data_daily_folder_fx <- function(path) {
+  if (!dir.exists(PATH_DATA_FOLDER_fx)) {
+    dir.create(PATH_DATA_FOLDER_fx)
+  }
+}
+
+
 
 # sreg data API
 get_sreg_data <- function(tag = 'subjekt', date_cols = c('datum_osnivanja', 'datum_brisanja')) {
@@ -66,6 +77,32 @@ if (!any(grepl('postup', daily_files))) {
   postupci$datum_stecaja <- lubridate::ymd_hms(postupci$datum_stecaja)
 }
 
+# hnb data API
+
+
+url <- "http://api.hnb.hr/tecajn/v1?datum-od=2019-12-01&datum-do=2020-04-08"
+
+# POVUCI 
+#options(timeout = 4000000) 
+
+API_zahtjev <- httr::GET(url)
+jS_tekst <- httr::content(API_zahtjev, as = "text", type = "aplication/json", encoding = "UTF-8")
+fx  <- jsonlite::fromJSON(jS_tekst, flatten = TRUE)
+
+CROfx <- fx %>%
+  dplyr::select(Datum = 'Datum primjene', 'Valuta', Tecaj = 'Srednji za devize') %>% 
+  dplyr::mutate(Tecaj = as.numeric(gsub(",",".", Tecaj))) %>% 
+  dplyr::mutate(Datum = as.Date(Datum, "%d.%m.%Y")) %>% 
+  dplyr::filter(Valuta %in% c('EUR','USD')) %>%
+  tidyr::spread(Valuta,Tecaj)
+
+fwrite(CROfx, paste0(PATH_DATA_FOLDER_fx, "/tecaj-", Sys.Date(), '.csv'), sep=';')
+
+dnevni_tecaj <- fread(paste0(PATH_DATA_FOLDER_fx, "/tecaj-", Sys.Date(), '.csv'), sep=';') # %>% str()
+
+
+
+
 # define bizz days
 praznici <- as.Date(c("2019-01-01", "2019-06-01", "2019-04-22", "2019-05-01",
                       "2019-06-20", "2019-06-22", "2019-06-25", "2019-08-05",
@@ -93,6 +130,21 @@ unemp <- data.frame(unemployment = unemployment, date = as.Date(date), stringsAs
 actual_free_jobs <- c(9174)
 date <- c('2020-04-03')
 open_jobs <- data.frame(actual_free_jobs = actual_free_jobs, date = as.Date(date), stringsAsFactors = FALSE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ```
 
 Dash {data-icon="fa-globe"}
@@ -182,6 +234,15 @@ plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>%
 ### Chart C
 
 ```{r}
+dfx <- dnevni_tecaj %>% dplyr::mutate(Datum = as.Date(Datum, "%Y-%m-%d")) # %>% str()
+fx_plot <- plot_ly(data = dfx, x = ~ Datum, y = ~ EUR, name = 'EUR', mode = 'lines') %>% 
+  add_lines(., hoverinfo="text", text=paste(dfx$Datum, ': ', dfx$EUR)) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Tečaj'))
+
+fx_plot <- fx_plot %>% add_trace(y = ~ USD, name = ' USD', mode = 'lines')
+
+fx_plot
 
 ```
 
