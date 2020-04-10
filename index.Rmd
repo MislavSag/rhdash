@@ -91,7 +91,7 @@ API_zahtjev <- httr::GET(url)
 jS_tekst <- httr::content(API_zahtjev, as = "text", type = "aplication/json", encoding = "UTF-8")
 fx  <- jsonlite::fromJSON(jS_tekst, flatten = TRUE)
 
-CROfx <- fx %>%
+dnevni_tecaj <- fx %>%
   dplyr::select(Datum = 'Datum primjene', 'Valuta', Tecaj = 'Srednji za devize') %>% 
   dplyr::mutate(Tecaj = as.numeric(gsub(",",".", Tecaj))) %>% 
   dplyr::mutate(Datum = as.Date(Datum, "%d.%m.%Y")) %>% 
@@ -126,9 +126,10 @@ if (last_biz_day > sreg_max_date) {
 
 # unemployment
 unemployment <- c(136071, 136855, 137722, 138673, 140907, 141289, 142442, 143461, 144819, 146477, 147575,
-                  14927)
+                  149257, 150372, 151239)
 date <- c('2020-03-23', '2020-03-24', '2020-03-25', '2020-03-26', '2020-03-27', '2020-03-30',
-          '2020-03-31', '2020-04-01', '2020-04-02', '2020-04-03', '2020-04-04', '2020-04-06')
+          '2020-03-31', '2020-04-01', '2020-04-02', '2020-04-03', '2020-04-04', '2020-04-07',
+          '2020-04-08', '2020-04-09')
 unemp <- data.frame(unemployment = unemployment, date = as.Date(date), stringsAsFactors = FALSE)
 actual_free_jobs <- c(9174)
 date <- c('2020-04-03')
@@ -215,11 +216,13 @@ Row {data-width=350}
 -----------------------------------------------------------------------
 
 
-### Chart B
+### Rast/pad broja nezasposlenih
 
 ```{r}
 unemp$unemp_change <- c(NA, diff(unemp$unemployment))
 plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Rast/pad broja nezaposlenih'))
   add_bars
 ```
 
@@ -233,7 +236,6 @@ fx_plot <- plot_ly(data = dfx, x = ~ Datum, y = ~ EUR, name = 'EUR', mode = 'lin
          yaxis = list(title = 'Tečaj'))
 
 fx_plot <- fx_plot %>% add_trace(y = ~ USD, name = ' USD', mode = 'lines')
-
 fx_plot
 
 ```
