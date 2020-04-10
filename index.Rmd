@@ -243,6 +243,12 @@ fx_plot
 Burza
 ===
 
+
+Row {data-width=350}
+-----------------------------------------------------------------------
+
+### CROBEX
+
 ```{r}
 url <- 'https://zse.hr/default.aspx?id=44101&index=CROBEX'
 form_data <- list(
