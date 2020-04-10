@@ -23,25 +23,29 @@ library(bizdays)
 
 
 # global
-PATH_DATA_FOLDER = 'E:/Luka/R/FlexD/data/sreg_daily'
-PATH_DATA_FOLDER_fx = 'E:/Luka/R/FlexD/data/hnb_daily'
-
-
+# PATH_DATA_FOLDER = 'E:/Luka/R/FlexD/data/sreg_daily'
+# PATH_DATA_FOLDER_fx = 'E:/Luka/R/FlexD/data/hnb_daily'
 
 # generate data folders
-generate_data_daily_folder <- function(path) {
-  if (!dir.exists(PATH_DATA_FOLDER)) {
-    dir.create(PATH_DATA_FOLDER)
-  }
+# generate_data_daily_folder <- function(path) {
+#   if (!dir.exists(PATH_DATA_FOLDER)) {
+#     dir.create(PATH_DATA_FOLDER)
+#   }
+# }
+# 
+# generate_data_daily_folder_fx <- function(path) {
+#   if (!dir.exists(PATH_DATA_FOLDER_fx)) {
+#     dir.create(PATH_DATA_FOLDER_fx)
+#   }
+# }
+
+# generate data_daily folder igf it doesn't exist
+# this is temporrary folder where we save data from 
+# court registry , so we don't have towait to downlaod it
+# when we do experimentation
+if (!dir.exists('data_temp')) {
+  dir.create('data_temp')
 }
-
-generate_data_daily_folder_fx <- function(path) {
-  if (!dir.exists(PATH_DATA_FOLDER_fx)) {
-    dir.create(PATH_DATA_FOLDER_fx)
-  }
-}
-
-
 
 # sreg data API
 get_sreg_data <- function(tag = 'subjekt', date_cols = c('datum_osnivanja', 'datum_brisanja')) {
@@ -59,27 +63,25 @@ get_sreg_data <- function(tag = 'subjekt', date_cols = c('datum_osnivanja', 'dat
   output[, (date_cols) := lapply(.SD, as.POSIXct), .SDcols = (date_cols)]  # parse dates as POSIXCT
   return(output)
 }
-daily_files <- list.files(PATH_DATA_FOLDER, pattern = as.character(Sys.Date()))
+daily_files <- list.files('data_temp', pattern = as.character(Sys.Date()))
 if (length(daily_files) == 0) {
   subjekti <- get_sreg_data()
   subjekti$oib <- str_pad(subjekti$oib, 11L, 'left', "0")
-  fwrite(subjekti, paste0(PATH_DATA_FOLDER, "/subjekti-", Sys.Date(), '.csv'), sep=';')
+  fwrite(subjekti, paste0("data_temp/subjekti-", Sys.Date(), '.csv'), sep=';')
 } else {
-  subjekti <- fread(paste0(PATH_DATA_FOLDER, "/subjekti-", Sys.Date(), '.csv'), sep=';')
+  subjekti <- fread(paste0("data_temp/subjekti-", Sys.Date(), '.csv'), sep=';')
   subjekti$datum_osnivanja <- lubridate::ymd_hms(subjekti$datum_osnivanja)
   subjekti$datum_brisanja <- lubridate::ymd_hms(subjekti$datum_brisanja)
 }
 if (!any(grepl('postup', daily_files))) {
   postupci <- get_sreg_data('postupak', 'datum_stecaja')
-  fwrite(postupci, paste0(PATH_DATA_FOLDER, "/postupci-", Sys.Date(), '.csv'), sep=';')
+  fwrite(postupci, paste0("data_temp/postupci-", Sys.Date(), '.csv'), sep=';')
 } else {
-  postupci <- fread(paste0(PATH_DATA_FOLDER, "/postupci-", Sys.Date(), '.csv'), sep=';')
+  postupci <- fread(paste0("data_temp/postupci-", Sys.Date(), '.csv'), sep=';')
   postupci$datum_stecaja <- lubridate::ymd_hms(postupci$datum_stecaja)
 }
 
 # hnb data API
-
-
 url <- "http://api.hnb.hr/tecajn/v1?datum-od=2019-12-01&datum-do=2020-04-08"
 
 # POVUCI 
@@ -96,9 +98,10 @@ CROfx <- fx %>%
   dplyr::filter(Valuta %in% c('EUR','USD')) %>%
   tidyr::spread(Valuta,Tecaj)
 
-fwrite(CROfx, paste0(PATH_DATA_FOLDER_fx, "/tecaj-", Sys.Date(), '.csv'), sep=';')
-
-dnevni_tecaj <- fread(paste0(PATH_DATA_FOLDER_fx, "/tecaj-", Sys.Date(), '.csv'), sep=';') # %>% str()
+# MISLIM DA NEMA POTREBE OVO SPREMATI!
+# fwrite(CROfx, paste0(PATH_DATA_FOLDER_fx, "/tecaj-", Sys.Date(), '.csv'), sep=';')
+# 
+# dnevni_tecaj <- fread(paste0(PATH_DATA_FOLDER_fx, "/tecaj-", Sys.Date(), '.csv'), sep=';') # %>% str()
 
 
 
@@ -130,17 +133,6 @@ unemp <- data.frame(unemployment = unemployment, date = as.Date(date), stringsAs
 actual_free_jobs <- c(9174)
 date <- c('2020-04-03')
 open_jobs <- data.frame(actual_free_jobs = actual_free_jobs, date = as.Date(date), stringsAsFactors = FALSE)
-
-
-
-
-
-
-
-
-
-
-
 
 
 
