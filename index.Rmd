@@ -106,31 +106,11 @@ dnevni_tecaj <- fx %>%
 
 # STATWORX COVID-19 data API
 
-
 payload <- list(code = "ALL")
 response <- httr::POST(url = "https://api.statworx.com/covid",
                        body = toJSON(payload, auto_unbox = TRUE), encode = "json")
-# Napravidata frame
 content <- rawToChar(response$content)
 COVID <- data.frame(fromJSON(content))
-
-#df %>%
-#  mutate(date = as.Date(date)) %>%
-#  filter(cases_cum > 100) %>%
-#  filter(code %in% c("HR")) %>%
-#  group_by(code) %>%
-#  mutate(time = 1:n())
-
-
-#%>%
-#  ggplot(., aes(x = time, y = cases_cum, color = code)) +
-#  xlab("Days since 100 cases") + ylab("Cumulative cases") +
-#  geom_line() + theme_minimal()
-
-
-
-
-
 
 
 # define bizz days
@@ -166,6 +146,57 @@ open_jobs <- data.frame(actual_free_jobs = actual_free_jobs, date = as.Date(date
 
 
 ```
+
+
+Dash {data-icon="fa-globe"}
+================================
+Row {data-width=650}
+-----------------------------------------------------------------------
+
+### Broj COVID-19 slučajeva
+
+
+### Broj COVID-19 smrtnih slučajeva
+
+
+Row
+-----------------------------------------------------------------------
+
+### Dinamika COVID-19 slučajeva
+
+```{r}
+C19 <- COVID %>%
+  dplyr::mutate(date = as.Date(date)) %>%
+  dplyr::filter(cases_cum > 1) %>%
+  dplyr::filter(code %in% c("HR")) %>%
+  dplyr::mutate(time = 1:n())
+
+C19_plot_case <- plot_ly(data = C19, x = ~time, y = ~cases_cum) %>% 
+  add_lines(., hoverinfo="text", text=paste(C19$time, ': ', C19$cases_cum)) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Broj COVID-19 slučajeva'))
+
+C19_plot_case
+
+```
+
+### Dinamika COVID-19 smrtnih slučajeva
+
+```{r}
+
+C19_plot_death <- plot_ly(data = C19, x = ~time, y = ~deaths) %>% 
+  add_bars(., hoverinfo="text", text=paste(C19$time, ': ', C19$deaths)) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Broj COVID-19 smrtnih slučajeva'))
+
+C19_plot_death
+
+
+
+```
+
+
+
 
 Dash {data-icon="fa-globe"}
 ================================
