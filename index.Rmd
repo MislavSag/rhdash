@@ -162,7 +162,7 @@ Row {data-width=650}
 
 ### Broj dana za uduplanje? COVID-19 slučajeva
 
-```{r}
+```{r, eval=F}
 # dodaj doubling time za slučajeve
 sr <- C19 %>% 
   dplyr::select(time, cases, cases_cum) %>%
@@ -220,9 +220,9 @@ C19_plot_death
 
 ```
 
-### Stopa rasta COVID-19 slučajeva
+### Stopa uduplavanja COVID-19 slučajeva
 
-```{r, }
+```{r, eval=F }
 
 sr <- C19 %>% 
   dplyr::select(time, cases, cases_cum) %>%
@@ -240,10 +240,15 @@ stopaRasta <- c(NA, log(sr$second/sr$second_last)/nrow(C19))
 ```
 
 
-Dash {data-icon="fa-globe"}
-================================
-Row {data-width=650}
+Realna ekonomija {data-icon="fa-globe"}
+===
+Row {data-width=350}
 -----------------------------------------------------------------------
+### Promjena broja zaposlenih
+
+```{r, eval=F}
+
+```
 
 ### Broj novoosnovanih firmi
 
@@ -252,9 +257,9 @@ new_firms_today <- nrow(subjekti[datum_osnivanja == last_biz_day])
 valueBox(value = new_firms_today, icon = "fa-user-plus", caption = 'Broj novoosnovanih firmi', color = "green")
 ```
 
-### Broj ugašenih tvrtki
 
-```{r}
+```{r, eval=F}
+### Broj ugašenih tvrtki
 closed_firms_today <- nrow(subjekti[datum_brisanja == last_biz_day])
 valueBox(value = closed_firms_today,icon = "fa-user-times", caption = "Broj ugašenih tvrtki", color = "red")
 ```
@@ -269,57 +274,6 @@ valueBox(value = stecajevi_today, icon = "fa-user-times", caption = "Broj pokren
 
 Row
 -----------------------------------------------------------------------
-
-### Dinamika ugašenih poduzeća
-
-```{r, eval=F}
-closed_firms <- subjekti[, .N, by = datum_brisanja]
-closed_firms <- closed_firms[datum_brisanja > as.POSIXct('2019-01-01 00:00:00')]
-closed_firms_plot <- plot_ly(data = closed_firms, x = ~datum_brisanja, y = ~N) %>% 
-  add_lines(., hoverinfo="text", text=paste(closed_firms$datum_brisanja, ': ', closed_firms$N)) %>% 
-  layout(xaxis = list(title = ''),
-         yaxis = list(title = 'Broj novoosnovanih poduzeća'))
-
-closed_firms_plot
-```
-
-
-
-Realna ekonomija {data-icon="fa-globe"}
-===
-Row {data-width=350}
------------------------------------------------------------------------
-### Promjena broja zaposlenih
-
-```{r, eval=F}
-
-
-
-
-```
-
-
-### Broj novoosnovanih firmi
-
-```{r}
-new_firms_today <- nrow(subjekti[datum_osnivanja == last_biz_day])
-valueBox(value = new_firms_today, icon = "fa-user-plus", caption = 'Broj novoosnovanih firmi', color = "green")
-```
-
-### Broj ugašenih tvrtki
-
-```{r, eval=F}
-closed_firms_today <- nrow(subjekti[datum_brisanja == last_biz_day])
-valueBox(value = closed_firms_today,icon = "fa-user-times", caption = "Broj ugašenih tvrtki", color = "red")
-```
-
-### Broj stečajeva
-
-```{r}
-stecajevi_today <- nrow(postupci[datum_stecaja == last_biz_day])
-valueBox(value = stecajevi_today, icon = "fa-user-times", caption = "Broj pokrenutih stečajeva", color = "black")
-```
-
 ### Rast/pad broja nezasposlenih
 
 ```{r}
@@ -345,6 +299,20 @@ new_firms_plot
 ```
 
 
+### Dinamika ugašenih poduzeća
+
+```{r, eval=F}
+### Dinamika ugašenih poduzeća
+closed_firms <- subjekti[, .N, by = datum_brisanja]
+closed_firms <- closed_firms[datum_brisanja > as.POSIXct('2019-01-01 00:00:00')]
+closed_firms_plot <- plot_ly(data = closed_firms, x = ~datum_brisanja, y = ~N) %>% 
+  add_lines(., hoverinfo="text", text=paste(closed_firms$datum_brisanja, ': ', closed_firms$N)) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Broj novoosnovanih poduzeća'))
+
+closed_firms_plot
+```
+
 ### Dinamika stečajeva i likvidacija
 
 ```{r}
@@ -359,6 +327,29 @@ stecajevi_plot
 
 Financijska tržišta
 ===
+### Dnevna promjena CROBEXa
+
+```{r}
+
+
+
+```
+
+### Dnevni tečaj EUR/HRK
+
+```{r, eval=F}
+
+
+
+```
+
+### Dnevni tečaj USD/HRK
+
+```{r}
+
+
+
+```
 
 
 Row {data-width=350}
