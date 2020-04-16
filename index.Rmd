@@ -148,16 +148,38 @@ open_jobs <- data.frame(actual_free_jobs = actual_free_jobs, date = as.Date(date
 ```
 
 
-Dash {data-icon="fa-globe"}
+Epidemiološki trendovi {data-icon="fa-globe"}
 ================================
 Row {data-width=650}
 -----------------------------------------------------------------------
 
 ### Broj COVID-19 slučajeva
+```{r}
+# dodaj broj slučajeva i stopu rasta
+
+
+```
+
+### Broj dana za uduplanje? COVID-19 slučajeva
+
+```{r}
+# dodaj doubling time za slučajeve
+sr <- C19 %>% 
+  dplyr::select(time, cases, cases_cum) %>%
+  dplyr::arrange(., time) 
+
+log(2)/coef(lm(log(cases_cum)~time, sr))[[2]]
+
+```
 
 
 ### Broj COVID-19 smrtnih slučajeva
 
+```{r}
+# dodaj broj smrtnih slučajeva
+
+
+```
 
 Row
 -----------------------------------------------------------------------
@@ -166,15 +188,18 @@ Row
 
 ```{r}
 C19 <- COVID %>%
+   dplyr::filter(code %in% c("HR")) %>%
+  dplyr::select(date, cases, cases_cum, deaths) %>%
   dplyr::mutate(date = as.Date(date)) %>%
   dplyr::filter(cases_cum > 1) %>%
-  dplyr::filter(code %in% c("HR")) %>%
-  dplyr::mutate(time = 1:n())
+  dplyr::mutate(time = 1:n()) %>%
+  dplyr::mutate(deaths_cum = cumsum(deaths))
 
 C19_plot_case <- plot_ly(data = C19, x = ~time, y = ~cases_cum) %>% 
-  add_lines(., hoverinfo="text", text=paste(C19$time, ': ', C19$cases_cum)) %>% 
-  layout(xaxis = list(title = ''),
+  add_lines(., hoverinfo="text", text=paste('Dan: ',C19$time, '; Ukupni broj slučajeva:', C19$cases_cum)) %>% 
+  layout(xaxis = list(title = 'Broj dana od prvog slučaja zaraze'),
          yaxis = list(title = 'Broj COVID-19 slučajeva'))
+
 
 C19_plot_case
 
@@ -184,10 +209,10 @@ C19_plot_case
 
 ```{r}
 
-C19_plot_death <- plot_ly(data = C19, x = ~time, y = ~deaths) %>% 
-  add_bars(., hoverinfo="text", text=paste(C19$time, ': ', C19$deaths)) %>% 
-  layout(xaxis = list(title = ''),
-         yaxis = list(title = 'Broj COVID-19 smrtnih slučajeva'))
+C19_plot_death <- plot_ly(data = C19, x = ~time, y = ~deaths_cum) %>% 
+  add_bars(., hoverinfo="text", text=paste('Broj umrlih :',C19$deaths, ';','Broj dana od prvog slučaja zaraze:',C19$time)) %>% 
+  layout(xaxis = list(title = 'Broj dana od prvog slučaja zaraze'),
+         yaxis = list(title = 'Kumulativni broj COVID-19 smrtnih slučajeva'))
 
 C19_plot_death
 
@@ -195,7 +220,24 @@ C19_plot_death
 
 ```
 
+### Stopa rasta COVID-19 slučajeva
 
+```{r, }
+
+sr <- C19 %>% 
+  dplyr::select(time, cases, cases_cum) %>%
+  dplyr::arrange(., time) 
+# dplyr::mutate(change = (cases - dplyr::lag(cases,1))/lag(cases,1)*100) %>%
+#  mutate(second = dplyr::nth(cases,2),
+#        second_last = dplyr::nth(cases, n = as.numeric(n()-1)))  
+
+log(2)/coef(lm(log(cases_cum)~time, sr))[[2]]
+  
+  
+stopaRasta <- c(NA, log(sr$second/sr$second_last)/nrow(C19))
+
+
+```
 
 
 Dash {data-icon="fa-globe"}
@@ -228,6 +270,67 @@ valueBox(value = stecajevi_today, icon = "fa-user-times", caption = "Broj pokren
 Row
 -----------------------------------------------------------------------
 
+### Dinamika ugašenih poduzeća
+
+```{r, eval=F}
+closed_firms <- subjekti[, .N, by = datum_brisanja]
+closed_firms <- closed_firms[datum_brisanja > as.POSIXct('2019-01-01 00:00:00')]
+closed_firms_plot <- plot_ly(data = closed_firms, x = ~datum_brisanja, y = ~N) %>% 
+  add_lines(., hoverinfo="text", text=paste(closed_firms$datum_brisanja, ': ', closed_firms$N)) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Broj novoosnovanih poduzeća'))
+
+closed_firms_plot
+```
+
+
+
+Realna ekonomija {data-icon="fa-globe"}
+===
+Row {data-width=350}
+-----------------------------------------------------------------------
+### Promjena broja zaposlenih
+
+```{r, eval=F}
+
+
+
+
+```
+
+
+### Broj novoosnovanih firmi
+
+```{r}
+new_firms_today <- nrow(subjekti[datum_osnivanja == last_biz_day])
+valueBox(value = new_firms_today, icon = "fa-user-plus", caption = 'Broj novoosnovanih firmi', color = "green")
+```
+
+### Broj ugašenih tvrtki
+
+```{r, eval=F}
+closed_firms_today <- nrow(subjekti[datum_brisanja == last_biz_day])
+valueBox(value = closed_firms_today,icon = "fa-user-times", caption = "Broj ugašenih tvrtki", color = "red")
+```
+
+### Broj stečajeva
+
+```{r}
+stecajevi_today <- nrow(postupci[datum_stecaja == last_biz_day])
+valueBox(value = stecajevi_today, icon = "fa-user-times", caption = "Broj pokrenutih stečajeva", color = "black")
+```
+
+### Rast/pad broja nezasposlenih
+
+```{r}
+unemp$unemp_change <- c(NA, diff(unemp$unemployment))
+plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Rast/pad broja nezaposlenih'))
+  add_bars
+```
+
+
 ### Dinamika novoosnovanih poduzeća
 
 ```{r}
@@ -241,18 +344,6 @@ new_firms_plot <- plot_ly(data = new_firms, x = ~datum_osnivanja, y = ~N) %>%
 new_firms_plot
 ```
 
-### Dinamika ugašenih poduzeća
-
-```{r}
-closed_firms <- subjekti[, .N, by = datum_brisanja]
-closed_firms <- closed_firms[datum_brisanja > as.POSIXct('2019-01-01 00:00:00')]
-closed_firms_plot <- plot_ly(data = closed_firms, x = ~datum_brisanja, y = ~N) %>% 
-  add_lines(., hoverinfo="text", text=paste(closed_firms$datum_brisanja, ': ', closed_firms$N)) %>% 
-  layout(xaxis = list(title = ''),
-         yaxis = list(title = 'Broj novoosnovanih poduzeća'))
-
-closed_firms_plot
-```
 
 ### Dinamika stečajeva i likvidacija
 
@@ -266,39 +357,7 @@ stecajevi_plot <- plot_ly(data = stecajevi, x = ~datum_stecaja, y = ~N) %>%
 stecajevi_plot
 ```
 
-
-
-Tržište rada {data-icon="fa-globe"}
-===
-Row {data-width=350}
------------------------------------------------------------------------
-
-
-### Rast/pad broja nezasposlenih
-
-```{r}
-unemp$unemp_change <- c(NA, diff(unemp$unemployment))
-plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>% 
-  layout(xaxis = list(title = ''),
-         yaxis = list(title = 'Rast/pad broja nezaposlenih'))
-  add_bars
-```
-
-### Chart C
-
-```{r}
-dfx <- dnevni_tecaj %>% dplyr::mutate(Datum = as.Date(Datum, "%Y-%m-%d")) # %>% str()
-fx_plot <- plot_ly(data = dfx, x = ~ Datum, y = ~ EUR, name = 'EUR', mode = 'lines') %>% 
-  add_lines(., hoverinfo="text", text=paste(dfx$Datum, ': ', dfx$EUR)) %>% 
-  layout(xaxis = list(title = ''),
-         yaxis = list(title = 'Tečaj'))
-
-fx_plot <- fx_plot %>% add_trace(y = ~ USD, name = ' USD', mode = 'lines')
-fx_plot
-
-```
-
-Burza
+Financijska tržišta
 ===
 
 
@@ -337,3 +396,16 @@ crobex_plot
 
 ```
 
+### TEČAJ
+
+```{r}
+dfx <- dnevni_tecaj %>% dplyr::mutate(Datum = as.Date(Datum, "%Y-%m-%d")) # %>% str()
+fx_plot <- plot_ly(data = dfx, x = ~ Datum, y = ~ EUR, name = 'EUR', mode = 'lines') %>% 
+  add_lines(., hoverinfo="text", text=paste(dfx$Datum, ': ', dfx$EUR)) %>% 
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Tečaj'))
+
+fx_plot <- fx_plot %>% add_trace(y = ~ USD, name = ' USD', mode = 'lines')
+fx_plot
+
+```
