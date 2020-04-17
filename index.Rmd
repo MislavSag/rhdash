@@ -188,7 +188,7 @@ Row
 
 ```{r}
 C19 <- COVID %>%
-   dplyr::filter(code %in% c("HR")) %>%
+  dplyr::filter(code %in% c("HR")) %>%
   dplyr::select(date, cases, cases_cum, deaths) %>%
   dplyr::mutate(date = as.Date(date)) %>%
   dplyr::filter(cases_cum > 1) %>%
@@ -227,14 +227,38 @@ C19_plot_death
 sr <- C19 %>% 
   dplyr::select(time, cases, cases_cum) %>%
   dplyr::arrange(., time) 
-# dplyr::mutate(change = (cases - dplyr::lag(cases,1))/lag(cases,1)*100) %>%
-#  mutate(second = dplyr::nth(cases,2),
-#        second_last = dplyr::nth(cases, n = as.numeric(n()-1)))  
 
-log(2)/coef(lm(log(cases_cum)~time, sr))[[2]]
-  
-  
-stopaRasta <- c(NA, log(sr$second/sr$second_last)/nrow(C19))
+sr[4,3] <- 6
+gr <- diff(log(sr$cases_cum))/1
+c_gr <- data.frame(vrijeme = sr$time[-1], stopaRasta = gr)
+#ggplot(c_gr, aes(x=vrijeme, y=stopaRasta)) + geom_line()
+dTime <- mutate(c_gr, doubleTime = log(2)/stopaRasta)
+#ggplot(dTime, aes(x=vrijeme, y=doubleTime)) + geom_bar(stat="identity")
+dTime[,3] <- round(dTime[,3],2)
+
+hline <- function(y = 0, color = "red") {
+  list(
+    type = "line", 
+    x0 = 0, 
+    x1 = 1, 
+    xref = "paper",
+    y0 = y, 
+    y1 = y, 
+    line = list(color = color)
+  )
+}
+
+
+C19_plot_dT <- plot_ly(data = dTime, x = ~vrijeme, y = ~doubleTime) %>% 
+  add_bars(., hoverinfo="text", text=paste('Broj dana od 1. slučaja zaraze :',dTime$vrijeme, ';','Broj dana do duplog broja zaraženih:',dTime$doubleTime)) %>% 
+  layout(xaxis = list(title ='Broj dana od prvog slučaja zaraze' ),
+         yaxis = list(title ='Broj dana za dvostruko povećanje broja slučajeva' ),
+         shapes=list(hline(14))) 
+
+
+C19_plot_dT
+
+
 
 
 ```
