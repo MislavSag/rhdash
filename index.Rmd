@@ -83,7 +83,7 @@ if (!any(grepl('postup', daily_files))) {
 }
 
 # hnb data API
-url <- "http://api.hnb.hr/tecajn/v1?datum-od=2019-12-01&datum-do=2020-04-08"
+url <- "http://api.hnb.hr/tecajn/v1?datum-od=2019-12-01&datum-do=2020-04-18"
 
 # POVUCI 
 #options(timeout = 4000000) 
@@ -171,7 +171,7 @@ Row {data-width=350}
 # dodaj broj slučajeva i stopu rasta
 Cn19 <- setDT(C19)
 new_cases_today <- Cn19[date == as.Date(as.POSIXct(last_biz_day,'UTC'))]
-valueBox(value = new_cases_today$cases, icon = "fa-user-plus", caption = 'Broj novih COVID19 slučajeva', color = "green")
+valueBox(value = new_cases_today$cases, icon = "angry", caption = 'Broj novih COVID19 slučajeva', color = "green")
 
 ```
 
@@ -180,7 +180,7 @@ valueBox(value = new_cases_today$cases, icon = "fa-user-plus", caption = 'Broj n
 ```{r}
 # dodaj broj smrtnih slučajeva
 new_cases_today <- Cn19[date == as.Date(as.POSIXct(last_biz_day,'UTC'))]
-valueBox(value = new_cases_today$deaths, icon = "fa-user-plus", caption = 'Broj smrtnih COVID19 slučajeva', color = "red")
+valueBox(value = new_cases_today$deaths, icon = "", caption = 'Broj smrtnih COVID19 slučajeva', color = "red")
 
 ```
 
@@ -209,7 +209,7 @@ dnT <- new_deaths_today %>%
   dplyr::select(doubleTime) %>%
   dplyr::mutate(doubleTime=round(doubleTime,2)) %>%
   as.numeric()
-valueBox(value = dnT, icon = "fa-user-plus", caption = 'Broj dana za uduplavanje COVID19 slučajeva', color = "red")
+valueBox(value = dnT, icon = "", caption = 'Broj dana za uduplavanje COVID19 slučajeva', color = "blue")
 
 ```
 
@@ -289,7 +289,7 @@ Row {data-width=350}
 
 ```{r}
 new_firms_today <- nrow(subjekti[datum_osnivanja == last_biz_day])
-valueBox(value = new_firms_today, icon = "fa-user-plus", caption = 'Broj novoosnovanih firmi', color = "green")
+valueBox(value = new_firms_today, icon = "", caption = 'Broj novoosnovanih firmi', color = "green")
 ```
 
 ```{r, eval=F}
@@ -302,7 +302,7 @@ valueBox(value = closed_firms_today,icon = "fa-user-times", caption = "Broj uga�
 
 ```{r}
 stecajevi_today <- nrow(postupci[datum_stecaja == last_biz_day])
-valueBox(value = stecajevi_today, icon = "fa-user-times", caption = "Broj pokrenutih stečajeva", color = "black")
+valueBox(value = stecajevi_today, icon = "", caption = "Broj pokrenutih stečajeva", color = "black")
 ```
 
 Row
@@ -388,17 +388,20 @@ crobex_today <- crobex %>%
   dplyr::select(promjena_percent) %>% 
   base::as.numeric()  
   
-valueBox(value = paste0(crobex_today,"%"), icon = "fa-user-plus", caption = 'CROBEX promjena', color = "green")
+valueBox(value = paste0(crobex_today,"%"), icon = "alien", caption = 'CROBEX promjena', color = "black")
   
   
-
-
 ```
 
 ### Dnevni tečaj EUR/HRK
 
-```{r, eval=F}
-
+```{r, eval=T}
+EUR_today <- dnevni_tecaj %>%
+  dplyr::filter(Datum == as.Date(as.POSIXct(last_biz_day,'UTC'))) %>%
+  dplyr::select(EUR) %>% 
+  base::as.numeric()  
+  
+valueBox(value = round(EUR_today,2), icon = "", caption = 'EUR/HRK', color = "green")
 
 
 ```
@@ -406,7 +409,12 @@ valueBox(value = paste0(crobex_today,"%"), icon = "fa-user-plus", caption = 'CRO
 ### Dnevni tečaj USD/HRK
 
 ```{r}
+USD_today <- dnevni_tecaj %>%
+  dplyr::filter(Datum == as.Date(as.POSIXct(last_biz_day,'UTC'))) %>%
+  dplyr::select(USD) %>% 
+  base::as.numeric()  
 
+valueBox(value = round(USD_today,2), icon = "", caption = 'EUR/HRK', color = "blue")
 
 
 ```
