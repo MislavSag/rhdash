@@ -200,15 +200,19 @@ c_gr <- data.frame(vrijeme = sr$time[-1],
                    date = sr$date[-1])
 dTime <- mutate(c_gr, doubleTime = log(2)/stopaRasta)
 dTime[,3] <- round(dTime[,3],2)
- setDT(dTime)
+setDT(dTime)
 
 #log(2)/coef(lm(log(cases_cum)~time, sr))[[2]] # provjeri!
 
 new_deaths_today <- dTime[date == as.Date(as.POSIXct(last_biz_day,'UTC'))]
-dnT <- new_deaths_today %>% select(doubleTime) %>% as.numeric()
-valueBox(value = dnT, icon = "fa-user-plus", caption = 'Broj smrtnih COVID19 slučajeva', color = "red")
+dnT <- new_deaths_today %>%
+  dplyr::select(doubleTime) %>%
+  dplyr::mutate(doubleTime=round(doubleTime,2)) %>%
+  as.numeric()
+valueBox(value = dnT, icon = "fa-user-plus", caption = 'Broj dana za uduplavanje COVID19 slučajeva', color = "red")
 
 ```
+
 Row
 -----------------------------------------------------------------------
 
@@ -241,9 +245,9 @@ C19_plot_death
 
 ```
 
-### Stopa uduplavanja COVID-19 slučajeva
+### Dinamika uduplavanja COVID-19 slučajeva
 
-```{r, eval=F }
+```{r, eval=T }
 
 hline <- function(y = 0, color = "red") {
   list(
@@ -288,7 +292,6 @@ new_firms_today <- nrow(subjekti[datum_osnivanja == last_biz_day])
 valueBox(value = new_firms_today, icon = "fa-user-plus", caption = 'Broj novoosnovanih firmi', color = "green")
 ```
 
-
 ```{r, eval=F}
 ### Broj ugašenih tvrtki
 closed_firms_today <- nrow(subjekti[datum_brisanja == last_biz_day])
@@ -302,7 +305,6 @@ stecajevi_today <- nrow(postupci[datum_stecaja == last_biz_day])
 valueBox(value = stecajevi_today, icon = "fa-user-times", caption = "Broj pokrenutih stečajeva", color = "black")
 ```
 
-
 Row
 -----------------------------------------------------------------------
 ### Rast/pad broja nezasposlenih
@@ -314,7 +316,6 @@ plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>%
          yaxis = list(title = 'Rast/pad broja nezaposlenih'))
   add_bars
 ```
-
 
 ### Dinamika novoosnovanih poduzeća
 
@@ -328,7 +329,6 @@ new_firms_plot <- plot_ly(data = new_firms, x = ~datum_osnivanja, y = ~N) %>%
 
 new_firms_plot
 ```
-
 
 ```{r, eval=F}
 ### Dinamika ugašenih poduzeća
@@ -358,11 +358,39 @@ Financijska tržišta{data-icon="fa-globe"}
 ===
 Row {data-width=350}
 -----------------------------------------------------------------------
-
 ### Dnevna promjena CROBEXa
 
 ```{r}
+url <- 'https://zse.hr/default.aspx?id=44101&index=CROBEX'
+form_data <- list(
+  "reporttype" = "security",
+  "DateFrom" = "01.01.2019",
+  "DateTo" = "18.04.2020",
+  "IsItIndexHistory" = "yes"
+)
+req <- httr::POST(
+  url,
+  body = form_data
+  )
+crobex <- content(req) %>% 
+  html_nodes('table#dnevna_trgovanja') %>% 
+  .[[2]] %>% 
+  html_table(., fill=TRUE, header=TRUE) %>% 
+  janitor::clean_names(.) %>% 
+  dplyr::filter(!is.na(datum)) %>% 
+  dplyr::mutate(datum=as.Date(datum, "%d.%m.%Y")) %>% 
+  dplyr::mutate_at(vars(prva:promet_dionica_u_sastavu_indeksa), ~ gsub("\\.|%| ", "", .x)) %>% 
+  dplyr::mutate_at(vars(prva:promet_dionica_u_sastavu_indeksa), ~ as.numeric(gsub(",", "\\.", .x)))
 
+
+crobex_today <- crobex %>%
+  dplyr::filter(datum == as.Date(as.POSIXct(last_biz_day,'UTC'))) %>%
+  dplyr::select(promjena_percent) %>% 
+  base::as.numeric()  
+  
+valueBox(value = paste0(crobex_today,"%"), icon = "fa-user-plus", caption = 'CROBEX promjena', color = "green")
+  
+  
 
 
 ```
@@ -390,26 +418,7 @@ Row
 ### CROBEX
 
 ```{r}
-url <- 'https://zse.hr/default.aspx?id=44101&index=CROBEX'
-form_data <- list(
-  "reporttype" = "security",
-  "DateFrom" = "01.01.2019",
-  "DateTo" = "09.04.2020",
-  "IsItIndexHistory" = "yes"
-)
-req <- httr::POST(
-  url,
-  body = form_data
-  )
-crobex <- content(req) %>% 
-  html_nodes('table#dnevna_trgovanja') %>% 
-  .[[2]] %>% 
-  html_table(., fill=TRUE, header=TRUE) %>% 
-  janitor::clean_names(.) %>% 
-  dplyr::filter(!is.na(datum)) %>% 
-  dplyr::mutate(datum=as.Date(datum, "%d.%m.%Y")) %>% 
-  dplyr::mutate_at(vars(prva:promet_dionica_u_sastavu_indeksa), ~ gsub("\\.|%| ", "", .x)) %>% 
-  dplyr::mutate_at(vars(prva:promet_dionica_u_sastavu_indeksa), ~ as.numeric(gsub(",", "\\.", .x)))
+
 crobex_plot <- crobex %>% plot_ly(x = ~datum, type="candlestick",
           open = ~prva, close = ~zadnja,
           high = ~najvisa, low = ~najniza) 
