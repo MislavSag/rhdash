@@ -7,6 +7,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+
 library(flexdashboard)
 library(httr)
 library(rvest)
@@ -112,6 +113,18 @@ response <- httr::POST(url = "https://api.statworx.com/covid",
 content <- rawToChar(response$content)
 COVID <- data.frame(fromJSON(content))
 
+C19 <- COVID %>%
+  dplyr::filter(code %in% c("HR")) %>%
+  dplyr::select(date, cases, cases_cum, deaths) %>%
+  dplyr::mutate(date = as.Date(date)) %>%
+ # dplyr::mutate(date = as.POSIXct(date, format = "%Y-%m-%d")) %>%
+  dplyr::filter(cases_cum > 1) %>%
+  dplyr::mutate(time = 1:n()) %>%
+  dplyr::mutate(deaths_cum = cumsum(deaths)) 
+
+
+
+
 
 # define bizz days
 praznici <- as.Date(c("2019-01-01", "2019-06-01", "2019-04-22", "2019-05-01",
@@ -150,50 +163,58 @@ open_jobs <- data.frame(actual_free_jobs = actual_free_jobs, date = as.Date(date
 
 Epidemiološki trendovi {data-icon="fa-globe"}
 ================================
-Row {data-width=650}
+Row {data-width=350}
 -----------------------------------------------------------------------
 
 ### Broj COVID-19 slučajeva
 ```{r}
 # dodaj broj slučajeva i stopu rasta
-
-
-```
-
-### Broj dana za uduplanje? COVID-19 slučajeva
-
-```{r, eval=F}
-# dodaj doubling time za slučajeve
-sr <- C19 %>% 
-  dplyr::select(time, cases, cases_cum) %>%
-  dplyr::arrange(., time) 
-
-log(2)/coef(lm(log(cases_cum)~time, sr))[[2]]
+Cn19 <- setDT(C19)
+new_cases_today <- Cn19[date == as.Date(as.POSIXct(last_biz_day,'UTC'))]
+valueBox(value = new_cases_today$cases, icon = "fa-user-plus", caption = 'Broj novih COVID19 slučajeva', color = "green")
 
 ```
-
 
 ### Broj COVID-19 smrtnih slučajeva
 
 ```{r}
 # dodaj broj smrtnih slučajeva
-
+new_cases_today <- Cn19[date == as.Date(as.POSIXct(last_biz_day,'UTC'))]
+valueBox(value = new_cases_today$deaths, icon = "fa-user-plus", caption = 'Broj smrtnih COVID19 slučajeva', color = "red")
 
 ```
 
+
+### Broj dana za uduplanje? COVID-19 slučajeva
+
+```{r, eval=T}
+
+sr <- C19 %>% 
+  dplyr::select(date,time, cases, cases_cum) %>%
+  dplyr::arrange(., time) 
+
+sr[4,3] <- 6
+gr <- diff(log(sr$cases_cum))/1
+c_gr <- data.frame(vrijeme = sr$time[-1],
+                   stopaRasta = gr,
+                   date = sr$date[-1])
+dTime <- mutate(c_gr, doubleTime = log(2)/stopaRasta)
+dTime[,3] <- round(dTime[,3],2)
+ setDT(dTime)
+
+#log(2)/coef(lm(log(cases_cum)~time, sr))[[2]] # provjeri!
+
+new_deaths_today <- dTime[date == as.Date(as.POSIXct(last_biz_day,'UTC'))]
+dnT <- new_deaths_today %>% select(doubleTime) %>% as.numeric()
+valueBox(value = dnT, icon = "fa-user-plus", caption = 'Broj smrtnih COVID19 slučajeva', color = "red")
+
+```
 Row
 -----------------------------------------------------------------------
 
 ### Dinamika COVID-19 slučajeva
 
 ```{r}
-C19 <- COVID %>%
-  dplyr::filter(code %in% c("HR")) %>%
-  dplyr::select(date, cases, cases_cum, deaths) %>%
-  dplyr::mutate(date = as.Date(date)) %>%
-  dplyr::filter(cases_cum > 1) %>%
-  dplyr::mutate(time = 1:n()) %>%
-  dplyr::mutate(deaths_cum = cumsum(deaths))
 
 C19_plot_case <- plot_ly(data = C19, x = ~time, y = ~cases_cum) %>% 
   add_lines(., hoverinfo="text", text=paste('Dan: ',C19$time, '; Ukupni broj slučajeva:', C19$cases_cum)) %>% 
@@ -224,18 +245,6 @@ C19_plot_death
 
 ```{r, eval=F }
 
-sr <- C19 %>% 
-  dplyr::select(time, cases, cases_cum) %>%
-  dplyr::arrange(., time) 
-
-sr[4,3] <- 6
-gr <- diff(log(sr$cases_cum))/1
-c_gr <- data.frame(vrijeme = sr$time[-1], stopaRasta = gr)
-#ggplot(c_gr, aes(x=vrijeme, y=stopaRasta)) + geom_line()
-dTime <- mutate(c_gr, doubleTime = log(2)/stopaRasta)
-#ggplot(dTime, aes(x=vrijeme, y=doubleTime)) + geom_bar(stat="identity")
-dTime[,3] <- round(dTime[,3],2)
-
 hline <- function(y = 0, color = "red") {
   list(
     type = "line", 
@@ -257,8 +266,6 @@ C19_plot_dT <- plot_ly(data = dTime, x = ~vrijeme, y = ~doubleTime) %>%
 
 
 C19_plot_dT
-
-
 
 
 ```
@@ -323,8 +330,6 @@ new_firms_plot
 ```
 
 
-### Dinamika ugašenih poduzeća
-
 ```{r, eval=F}
 ### Dinamika ugašenih poduzeća
 closed_firms <- subjekti[, .N, by = datum_brisanja]
@@ -349,8 +354,11 @@ stecajevi_plot <- plot_ly(data = stecajevi, x = ~datum_stecaja, y = ~N) %>%
 stecajevi_plot
 ```
 
-Financijska tržišta
+Financijska tržišta{data-icon="fa-globe"}
 ===
+Row {data-width=350}
+-----------------------------------------------------------------------
+
 ### Dnevna promjena CROBEXa
 
 ```{r}
@@ -376,7 +384,7 @@ Financijska tržišta
 ```
 
 
-Row {data-width=350}
+Row 
 -----------------------------------------------------------------------
 
 ### CROBEX
