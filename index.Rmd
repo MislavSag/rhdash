@@ -161,7 +161,7 @@ open_jobs <- data.frame(actual_free_jobs = actual_free_jobs, date = as.Date(date
 ```
 
 
-Epidemiološki trendovi {data-icon="fa-globe"}
+Epidemiološki trendovi {data-icon="fa-comments"}
 ================================
 Row {data-width=350}
 -----------------------------------------------------------------------
