@@ -56,7 +56,7 @@ get_sreg_data <- function(tag = 'subjekt', date_cols = c('datum_osnivanja', 'dat
     url <- paste0(domain, tag, "?offset=0&limit=800000")
   }
   req <- httr::RETRY("GET", url, add_headers('Ocp-Apim-Subscription-Key' = "0c7a9bbd34674a428e4218340fba732b"),
-                     pause_cap = 60)
+                     pause_cap = 120)
   json <- httr::content(req, as = "text", encoding = "UTF-8")
   output <- jsonlite::fromJSON(json, simplifyDataFrame = TRUE)
   data.table::setDT(output)
