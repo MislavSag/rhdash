@@ -135,7 +135,7 @@ Row {data-width=350}
 # dodaj broj slučajeva i stopu rasta
 Cn19 <- setDT(C19)
 new_cases_today <- Cn19[date == as.Date(as.POSIXct(last_biz_day,'UTC'))]
-valueBox(value = new_cases_today$cases, icon = "angry", caption = 'Broj novih COVID19 slučajeva', color = "red")
+valueBox(value = new_cases_today$cases, icon = "angry", caption = 'Broj novih COVID-19 slučajeva', color = "red")
 
 ```
 
@@ -144,7 +144,7 @@ valueBox(value = new_cases_today$cases, icon = "angry", caption = 'Broj novih CO
 ```{r}
 # dodaj broj smrtnih slučajeva
 new_cases_today <- Cn19[date == as.Date(as.POSIXct(last_biz_day,'UTC'))]
-valueBox(value = new_cases_today$deaths, icon = "", caption = 'Broj smrtnih COVID19 slučajeva', color = "black")
+valueBox(value = new_cases_today$deaths, icon = "", caption = 'Broj smrtnih COVID-19 slučajeva', color = "black")
 
 ```
 
