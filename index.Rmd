@@ -125,7 +125,7 @@ open_jobs <- data.frame(actual_free_jobs = actual_free_jobs, date = as.Date(date
 ```
 
 
-Epidemiološki trendovi {data-icon="fa-comments"}
+Epidemiološki trendovi {data-icon="fa-globe"}
 ================================
 Row {data-width=350}
 -----------------------------------------------------------------------
@@ -135,7 +135,7 @@ Row {data-width=350}
 # dodaj broj slučajeva i stopu rasta
 Cn19 <- setDT(C19)
 new_cases_today <- Cn19[date == as.Date(as.POSIXct(last_biz_day,'UTC'))]
-valueBox(value = new_cases_today$cases, icon = "angry", caption = 'Broj novih COVID19 slučajeva', color = "green")
+valueBox(value = new_cases_today$cases, icon = "angry", caption = 'Broj novih COVID19 slučajeva', color = "red")
 
 ```
 
@@ -144,7 +144,7 @@ valueBox(value = new_cases_today$cases, icon = "angry", caption = 'Broj novih CO
 ```{r}
 # dodaj broj smrtnih slučajeva
 new_cases_today <- Cn19[date == as.Date(as.POSIXct(last_biz_day,'UTC'))]
-valueBox(value = new_cases_today$deaths, icon = "", caption = 'Broj smrtnih COVID19 slučajeva', color = "red")
+valueBox(value = new_cases_today$deaths, icon = "", caption = 'Broj smrtnih COVID19 slučajeva', color = "black")
 
 ```
 
@@ -173,7 +173,7 @@ dnT <- new_deaths_today %>%
   dplyr::select(doubleTime) %>%
   dplyr::mutate(doubleTime=round(doubleTime,2)) %>%
   as.numeric()
-valueBox(value = dnT, icon = "", caption = 'Broj dana za uduplavanje COVID19 slučajeva', color = "blue")
+valueBox(value = dnT, icon = "", caption = 'Vrijeme (broj dana) udvostručenja slučajeva', color = "blue")
 
 ```
 
@@ -185,7 +185,7 @@ Row
 ```{r}
 
 C19_plot_case <- plot_ly(data = C19, x = ~time, y = ~cases_cum) %>% 
-  add_lines(., hoverinfo="text", text=paste('Dan: ',C19$time, '; Ukupni broj slučajeva:', C19$cases_cum)) %>% 
+  add_lines(., hoverinfo="text",line = list(color = "red"), text=paste('Dan: ',C19$time, '; Ukupni broj slučajeva:', C19$cases_cum)) %>% 
   layout(xaxis = list(title = 'Broj dana od prvog slučaja zaraze'),
          yaxis = list(title = 'Broj COVID-19 slučajeva'))
 
@@ -199,9 +199,9 @@ C19_plot_case
 ```{r}
 
 C19_plot_death <- plot_ly(data = C19, x = ~time, y = ~deaths_cum) %>% 
-  add_bars(., hoverinfo="text", text=paste('Broj umrlih :',C19$deaths, ';','Broj dana od prvog slučaja zaraze:',C19$time)) %>% 
+  add_bars(., hoverinfo="text", marker = list(color = "black"), text=paste('Dan:', C19$time, 'Broj umrlih :',C19$deaths)) %>% 
   layout(xaxis = list(title = 'Broj dana od prvog slučaja zaraze'),
-         yaxis = list(title = 'Kumulativni broj COVID-19 smrtnih slučajeva'))
+         yaxis = list(title = 'Broj COVID-19 smrtnih slučajeva'))
 
 C19_plot_death
 
@@ -209,7 +209,7 @@ C19_plot_death
 
 ```
 
-### Dinamika uduplavanja COVID-19 slučajeva
+### Vrijeme udvostručenja novih slučajeva
 
 ```{r, eval=T }
 
@@ -222,14 +222,20 @@ hline <- function(y = 0, color = "red") {
     y0 = y, 
     y1 = y, 
     line = list(color = color)
+    
   )
 }
 
 
-C19_plot_dT <- plot_ly(data = dTime, x = ~vrijeme, y = ~doubleTime) %>% 
-  add_bars(., hoverinfo="text", text=paste('Broj dana od 1. slučaja zaraze :',dTime$vrijeme, ';','Broj dana do duplog broja zaraženih:',dTime$doubleTime)) %>% 
+annotation <- list(yref = '', xref = "x", y = 14, x = 20, text = "Referentno za popuštanje mjera prema RKI.de(14 dana).")
+
+C19_plot_dT <- plot_ly(data = +dTime, x = ~vrijeme, y = ~doubleTime) %>% 
+  add_bars(., hoverinfo = "text",
+           line = list(color = "blue"),
+           text=paste('Dan :',dTime$vrijeme, ';','Vrijeme udvostručenja u danima:',dTime$doubleTime)) %>% 
   layout(xaxis = list(title ='Broj dana od prvog slučaja zaraze' ),
-         yaxis = list(title ='Broj dana za dvostruko povećanje broja slučajeva' ),
+         yaxis = list(title ='Vrijeme udvostručenja slučajeva u danima' ),
+         annotations= list(annotation),
          shapes=list(hline(14))) 
 
 
@@ -248,7 +254,7 @@ Row {data-width=350}
 ```{r}
 unemp$unemp_change <- c(NA, diff(unemp$unemployment))
 unemp_today <- unemp[unemp$date == max(unemp$date), 'unemp_change']
-valueBox(value = unemp_today, icon = "", caption = 'Rast broja netaposlenih', color = "red")
+valueBox(value = paste("-", unemp_today), icon = "", caption = 'Promjena zaposlenosti', color = "red")
 
 ```
 
@@ -277,14 +283,14 @@ valueBox(value = stecajevi_today, icon = "", caption = "Broj pokrenutih stečaje
 
 Row
 -----------------------------------------------------------------------
-### Rast/pad broja nezasposlenih
+### Dinamika nezasposlenosti
 
 ```{r}
 unemp$unemp_change <- c(NA, diff(unemp$unemployment))
 plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>% 
   layout(xaxis = list(title = ''),
-         yaxis = list(title = 'Rast/pad broja nezaposlenih'))
-  add_bars
+         yaxis = list(title = 'Promjena broja nezaposlenih'))%>%
+  add_bars(marker = list(color = "red"))
   
 ```
 
@@ -294,7 +300,7 @@ plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>%
 new_firms <- subjekti[, .N, by = datum_osnivanja]
 new_firms <- new_firms[datum_osnivanja > as.POSIXct('2019-01-01 00:00:00')]
 new_firms_plot <- plot_ly(data = new_firms, x = ~datum_osnivanja, y = ~N) %>% 
-  add_lines(., hoverinfo="text", text=paste(new_firms$datum_osnivanja, ': ', new_firms$N)) %>% 
+  add_lines(., hoverinfo="text",line = list(color = "green"), text=paste(new_firms$datum_osnivanja, ': ', new_firms$N)) %>% 
   layout(xaxis = list(title = ''),
          yaxis = list(title = 'Broj novoosnovanih poduzeća'))
 
@@ -319,7 +325,7 @@ closed_firms_plot
 stecajevi <- postupci[, .N, by = datum_stecaja]
 stecajevi <- stecajevi[datum_stecaja > as.POSIXct('2019-01-01 00:00:00')]
 stecajevi_plot <- plot_ly(data = stecajevi, x = ~datum_stecaja, y = ~N) %>% 
-  add_lines(., hoverinfo="text", text=paste(stecajevi$datum_stecaja, ': ', stecajevi$N)) %>% 
+  add_lines(., hoverinfo="text",line = list(color = "black"), text=paste(stecajevi$datum_stecaja, ': ', stecajevi$N)) %>% 
   layout(xaxis = list(title = ''),
          yaxis = list(title = 'Broj novoosnovanih poduzeća'))
 stecajevi_plot
@@ -336,7 +342,7 @@ url <- 'https://zse.hr/default.aspx?id=44101&index=CROBEX'
 form_data <- list(
   "reporttype" = "security",
   "DateFrom" = "01.01.2019",
-  "DateTo" = "18.04.2020",
+  "DateTo" = "20.04.2020",
   "IsItIndexHistory" = "yes"
 )
 req <- httr::POST(
@@ -360,7 +366,7 @@ crobex_today <- crobex %>%
   base::as.numeric()  
   
 valueBox(value = paste0(crobex_today,"%"), icon = "alien", caption = 'CROBEX promjena', color = "black")
-  
+#valueBox(value =  paste0(";", Sys.Date()),style = "font-size: 100%;")  
   
 ```
 
@@ -385,7 +391,7 @@ USD_today <- dnevni_tecaj %>%
   dplyr::select(USD) %>% 
   base::as.numeric()  
 
-valueBox(value = round(USD_today,2), icon = "", caption = 'EUR/HRK', color = "blue")
+valueBox(value = round(USD_today,2), icon = "", caption = 'USD/HRK', color = "blue")
 
 
 ```
@@ -398,12 +404,20 @@ Row
 
 ```{r}
 
+i <- list(line = list(color = 'black'))
+d <- list(line = list(color = 'black'))
+ax <- list(
+  title = ""
+)
+
 crobex_plot <- crobex %>% plot_ly(x = ~datum, type="candlestick",
           open = ~prva, close = ~zadnja,
-          high = ~najvisa, low = ~najniza) 
-crobex_plot <- crobex_plot %>% layout(title = "Basic Candlestick Chart",
-                                      xaxis = list(rangeslider = list(visible = F)))
+          high = ~najvisa, low = ~najniza,
+          increasing = i, decreasing = d) 
+crobex_plot <- crobex_plot %>% layout(xaxsis = ax)
+                                 
 crobex_plot
+
 
 ```
 
@@ -412,11 +426,11 @@ crobex_plot
 ```{r}
 dfx <- dnevni_tecaj %>% dplyr::mutate(Datum = as.Date(Datum, "%Y-%m-%d")) # %>% str()
 fx_plot <- plot_ly(data = dfx, x = ~ Datum, y = ~ EUR, name = 'EUR', mode = 'lines') %>% 
-  add_lines(., hoverinfo="text", text=paste(dfx$Datum, ': ', dfx$EUR)) %>% 
+  add_lines(., hoverinfo="text",line = list(color = "green"), text=paste(dfx$Datum, ': ', dfx$EUR)) %>% 
   layout(xaxis = list(title = ''),
-         yaxis = list(title = 'Tečaj'))
+         yaxis = list(title = ''))
 
-fx_plot <- fx_plot %>% add_trace(y = ~ USD, name = ' USD', mode = 'lines')
+fx_plot <- fx_plot %>% add_trace(y = ~ USD,name = ' USD',  mode = 'lines', line = list(color = "blue"))
 fx_plot
 
 ```
