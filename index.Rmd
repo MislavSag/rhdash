@@ -23,27 +23,7 @@ library(plotly)
 library(bizdays)
 
 
-# global
-# PATH_DATA_FOLDER = 'E:/Luka/R/FlexD/data/sreg_daily'
-# PATH_DATA_FOLDER_fx = 'E:/Luka/R/FlexD/data/hnb_daily'
-
-# generate data folders
-# generate_data_daily_folder <- function(path) {
-#   if (!dir.exists(PATH_DATA_FOLDER)) {
-#     dir.create(PATH_DATA_FOLDER)
-#   }
-# }
-# 
-# generate_data_daily_folder_fx <- function(path) {
-#   if (!dir.exists(PATH_DATA_FOLDER_fx)) {
-#     dir.create(PATH_DATA_FOLDER_fx)
-#   }
-# }
-
-# generate data_daily folder igf it doesn't exist
-# this is temporrary folder where we save data from 
-# court registry , so we don't have towait to downlaod it
-# when we do experimentation
+# create directory for saving today sreg data (avoid multiplie downloads)
 if (!dir.exists('data_temp')) {
   dir.create('data_temp')
 }
@@ -57,7 +37,7 @@ get_sreg_data <- function(tag = 'subjekt', date_cols = c('datum_osnivanja', 'dat
     url <- paste0(domain, tag, "?offset=0&limit=800000")
   }
   req <- httr::RETRY("GET", url, add_headers('Ocp-Apim-Subscription-Key' = "0c7a9bbd34674a428e4218340fba732b"),
-                     pause_cap = 60)
+                     pause_cap = 180)
   json <- httr::content(req, as = "text", encoding = "UTF-8")
   output <- jsonlite::fromJSON(json, simplifyDataFrame = TRUE)
   data.table::setDT(output)
@@ -82,16 +62,12 @@ if (!any(grepl('postup', daily_files))) {
   postupci$datum_stecaja <- lubridate::ymd_hms(postupci$datum_stecaja)
 }
 
+
 # hnb data API
 url <- "http://api.hnb.hr/tecajn/v1?datum-od=2019-12-01&datum-do=2020-04-18"
-
-# POVUCI 
-#options(timeout = 4000000) 
-
 API_zahtjev <- httr::GET(url)
 jS_tekst <- httr::content(API_zahtjev, as = "text", type = "aplication/json", encoding = "UTF-8")
 fx  <- jsonlite::fromJSON(jS_tekst, flatten = TRUE)
-
 dnevni_tecaj <- fx %>%
   dplyr::select(Datum = 'Datum primjene', 'Valuta', Tecaj = 'Srednji za devize') %>% 
   dplyr::mutate(Tecaj = as.numeric(gsub(",",".", Tecaj))) %>% 
@@ -99,20 +75,13 @@ dnevni_tecaj <- fx %>%
   dplyr::filter(Valuta %in% c('EUR','USD')) %>%
   tidyr::spread(Valuta,Tecaj)
 
-# MISLIM DA NEMA POTREBE OVO SPREMATI!
-# fwrite(CROfx, paste0(PATH_DATA_FOLDER_fx, "/tecaj-", Sys.Date(), '.csv'), sep=';')
-# 
-# dnevni_tecaj <- fread(paste0(PATH_DATA_FOLDER_fx, "/tecaj-", Sys.Date(), '.csv'), sep=';') # %>% str()
-
 
 # STATWORX COVID-19 data API
-
 payload <- list(code = "ALL")
 response <- httr::POST(url = "https://api.statworx.com/covid",
                        body = toJSON(payload, auto_unbox = TRUE), encode = "json")
 content <- rawToChar(response$content)
 COVID <- data.frame(fromJSON(content))
-
 C19 <- COVID %>%
   dplyr::filter(code %in% c("HR")) %>%
   dplyr::select(date, cases, cases_cum, deaths) %>%
@@ -121,9 +90,6 @@ C19 <- COVID %>%
   dplyr::filter(cases_cum > 1) %>%
   dplyr::mutate(time = 1:n()) %>%
   dplyr::mutate(deaths_cum = cumsum(deaths)) 
-
-
-
 
 
 # define bizz days
@@ -144,19 +110,17 @@ if (last_biz_day > sreg_max_date) {
   last_biz_day <- sreg_max_date
 }
 
+
 # unemployment
 unemployment <- c(136071, 136855, 137722, 138673, 140907, 141289, 142442, 143461, 144819, 146477, 147575,
-                  149257, 150372, 151239)
+                  149257, 150372, 151239, 152454, 153839, 154567, 155278)
 date <- c('2020-03-23', '2020-03-24', '2020-03-25', '2020-03-26', '2020-03-27', '2020-03-30',
           '2020-03-31', '2020-04-01', '2020-04-02', '2020-04-03', '2020-04-04', '2020-04-07',
-          '2020-04-08', '2020-04-09')
+          '2020-04-08', '2020-04-09', '2020-04-10', '2020-04-15', '2020-04-17', '2020-04-18')
 unemp <- data.frame(unemployment = unemployment, date = as.Date(date), stringsAsFactors = FALSE)
 actual_free_jobs <- c(9174)
 date <- c('2020-04-03')
 open_jobs <- data.frame(actual_free_jobs = actual_free_jobs, date = as.Date(date), stringsAsFactors = FALSE)
-
-
-
 
 ```
 
@@ -281,7 +245,10 @@ Row {data-width=350}
 -----------------------------------------------------------------------
 ### Promjena broja zaposlenih
 
-```{r, eval=F}
+```{r}
+unemp$unemp_change <- c(NA, diff(unemp$unemployment))
+unemp_today <- unemp[unemp$date == max(unemp$date), 'unemp_change']
+valueBox(value = unemp_today, icon = "", caption = 'Rast broja netaposlenih', color = "red")
 
 ```
 
@@ -290,12 +257,14 @@ Row {data-width=350}
 ```{r}
 new_firms_today <- nrow(subjekti[datum_osnivanja == last_biz_day])
 valueBox(value = new_firms_today, icon = "", caption = 'Broj novoosnovanih firmi', color = "green")
+
 ```
 
 ```{r, eval=F}
 ### Broj ugašenih tvrtki
 closed_firms_today <- nrow(subjekti[datum_brisanja == last_biz_day])
 valueBox(value = closed_firms_today,icon = "fa-user-times", caption = "Broj ugašenih tvrtki", color = "red")
+
 ```
 
 ### Broj stečajeva
@@ -303,6 +272,7 @@ valueBox(value = closed_firms_today,icon = "fa-user-times", caption = "Broj uga�
 ```{r}
 stecajevi_today <- nrow(postupci[datum_stecaja == last_biz_day])
 valueBox(value = stecajevi_today, icon = "", caption = "Broj pokrenutih stečajeva", color = "black")
+
 ```
 
 Row
@@ -315,6 +285,7 @@ plot_ly(data = unemp, x = ~as.factor(date), y = ~unemp_change) %>%
   layout(xaxis = list(title = ''),
          yaxis = list(title = 'Rast/pad broja nezaposlenih'))
   add_bars
+  
 ```
 
 ### Dinamika novoosnovanih poduzeća
